@@ -1,4 +1,29 @@
+## SFS - Simple File Sync
+
+This project is a file synchronization utility written in C++ that efficiently syncs files between two directories. It detects changes, resolves conflicts, manages file versions, and supports customizable ignore patterns. Ideal for maintaining consistent backups or syncing data across local directories.
+
+### Quick Start
+
+Compile the program
+Dependencies Required: OpenSSL and `nlohmann/json`
+
+```bash
+g++ main.cpp -std=c++17 -lcrypto -o sfs.exe
+```
+
+Run the sync tool:
+
+```bash
+./sfs.exe <source_directory> <destination_directory> <index_file.json> [--dry-run] [--symlinks]
+```
+
+- `--dry-run`: Preview changes without modifying files.
+- `--symlinks`: Utilize symbolic links for source and destination paths.
+
 ## Key Features
+
+<details>
+<summary>Click to expand Key Features</summary>
 
 ### Directory Scanning
 - Recursively scans directories and captures file metadata (modification times and SHA256 hashes) to efficiently manage synchronization.
@@ -24,3 +49,5 @@
 
 ### Symbolic Links Support
 - Offers the ability to create and manage symbolic links, simplifying synchronization across arbitrary locations.
+
+</details>
