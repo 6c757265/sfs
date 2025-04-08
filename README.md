@@ -51,3 +51,40 @@ Run the sync tool:
 - Offers the ability to create and manage symbolic links, simplifying synchronization across arbitrary locations.
 
 </details>
+
+## TODO's
+<details>
+<summary>Click to expand future features</summary>
+
+### Enhanced Conflict Resolution
+- Implement a more sophisticated merging strategy, particularly for textual files, by integrating a three-way merging algorithms.
+
+### Performance Optimization
+- Parallelize file hashing and scanning operations using multithreading.
+- Implement caching mechanisms to avoid unnecessary rehashing of large files that haven't changed.
+
+### Logging and Audit Trail
+- Integrate structured logging (to file or central logging systems) instead of just standard output.
+- Implement verbosity levels (info, debug, error) and log rotation.
+
+### Security and Encryption
+- Add file-level encryption to protect sensitive files during synchronization.
+- Support secure network-based synchronization through SSL/TLS.
+
+### Real-time Sync Capabilities
+- Implement directory watchers for near real-time synchronization without manual triggering.
+
+### Backup and Restore Functionality
+- Introduce snapshot management and restore features that can roll back directories to previous versions, complementing your existing versioning strategy.
+
+### Remote Synchronization Support
+- Extend it to handle remote file synchronization over protocols such as FTP, SFTP, SMB or cloud storage APIs.
+
+### Enhanced Pattern Matching and Filtering
+- Support more advanced wildcard/glob or regex-based file filtering.
+- Allow users to dynamically add, edit, or remove ignore patterns via command-line arguments or configuration files.
+
+### User Interface and Reporting
+- Develop a GUI for easier monitoring and management.
+- Provide summary reports of synchronization tasks, including performance metrics and statistics.
+</details>
