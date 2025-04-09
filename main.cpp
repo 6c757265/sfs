@@ -10,6 +10,10 @@
 #include <nlohmann/json.hpp>
 #include <openssl/evp.h>
 #include <iomanip>
+#ifdef _WIN32
+#include <windows.h>
+#undef max
+#endif
 
 //**// New globals for symlink support:
 static std::filesystem::path g_srcBase;
@@ -347,80 +351,95 @@ void versionedDelete(const fs::path& filePath) {
     }
 }
 
-// symlink Creation for Arbitrary Directories
+// symlink Creation for Arbitrary Directories - windows only for now..
 void createAndUseSymlinks(fs::path& dirSrc, fs::path& dirDest) {
     fs::path linkSrc = fs::current_path() / "src_link";
     fs::path linkDest = fs::current_path() / "dest_link";
 
-    // sreate symlink for source if it doesn't exist
+#ifdef _WIN32
     if (!fs::exists(linkSrc)) {
-        try {
-            fs::create_directory_symlink(dirSrc, linkSrc);
-            std::cout << "[SYMLINK] Created symlink for src: " << linkSrc << " -> " << dirSrc << "\n";
-        } catch (const fs::filesystem_error& e) {
-            std::cerr << "Error creating src symlink: " << e.what() << "\n";
+        BOOL ok = CreateSymbolicLinkW(
+            linkSrc.wstring().c_str(),
+            dirSrc.wstring().c_str(),
+            SYMBOLIC_LINK_FLAG_DIRECTORY
+        );
+        if (!ok) {
+            DWORD err = GetLastError();
+            std::cerr << "Error creating src symlink: " << err << "\n";
+        } else {
+            std::cout << "[SYMLINK] Created src: " << linkSrc << " -> " << dirSrc << "\n";
         }
     } else {
         std::cout << "[SYMLINK] Using existing src symlink: " << linkSrc << "\n";
     }
 
-    // create symlink for destination if it not exist
     if (!fs::exists(linkDest)) {
-        try {
-            fs::create_directory_symlink(dirDest, linkDest);
-            std::cout << "[SYMLINK] Created symlink for dest: " << linkDest << " -> " << dirDest << "\n";
-        } catch (const fs::filesystem_error& e) {
-            std::cerr << "Error creating dest symlink: " << e.what() << "\n";
+        BOOL ok = CreateSymbolicLinkW(
+            linkDest.wstring().c_str(),
+            dirDest.wstring().c_str(),
+            SYMBOLIC_LINK_FLAG_DIRECTORY
+        );
+        if (!ok) {
+            DWORD err = GetLastError();
+            std::cerr << "Error creating dest symlink: " << err << "\n";
+        } else {
+            std::cout << "[SYMLINK] Created dest: " << linkDest << " -> " << dirDest << "\n";
         }
     } else {
         std::cout << "[SYMLINK] Using existing dest symlink: " << linkDest << "\n";
     }
-
-    // update the directory variables to refer to the symlinks
+#else
+    std::cerr << "Symlink creation is only implemented for Windows.\n";
+#endif
     dirSrc = linkSrc;
     dirDest = linkDest;
 }
 
+
 // main()
 int main(int argc, char** argv) {
     /*
-       sfs.exe <dirSrc> <dirDest> <indexFile> [--dry-run] [--symlinks]
-       iof you want to use symlinks for arbitrary directories add "--symlinks" at the end
-       if you want dry-run mode add "--dry-run" at the end
+       sfs.exe <dirSrc> <dirDest> [indexFile] [--dry-run] [--symlinks]
+       If indexFile is omitted, defaults to "sfs_index.json".
+       Flags can appear in any order after the directory args.
     */
-    if (argc < 4) {
+
+    if (argc < 3) {
         std::cerr << "Usage: " << argv[0]
-                  << " <dirSrc> <dirDest> <indexFile> [--dry-run] [--symlinks]\n";
+                  << " <dirSrc> <dirDest> [indexFile] [--dry-run] [--symlinks]\n";
         return 1;
     }
 
-    // resolve input directories to canonical paths
-    fs::path realSrc = fs::canonical(argv[1]); 
+    fs::path realSrc = fs::canonical(argv[1]);
     fs::path realDest = fs::canonical(argv[2]);
-    fs::path indexFile = argv[3];
 
-    // set global base paths
-    g_srcBase = realSrc; 
-    g_destBase = realDest;
+    fs::path indexFile = "sfs_index.json";  // Default
+    bool useSymlinks = false;
+    g_dryRun = false;
 
-    // process additional flags:
-    bool useSymlinks = false; 
-    for (int i = 4; i < argc; ++i) {
+    // Parse remaining args
+    for (int i = 3; i < argc; ++i) {
         std::string arg = argv[i];
-        if (arg == "--dry-run") {
+
+        if (arg == "--symlinks") {
+            useSymlinks = true;
+        } else if (arg == "--dry-run") {
             g_dryRun = true;
             std::cout << "[DRY RUN MODE ENABLED] No changes will be written.\n";
-        } else if (arg == "--symlinks") {
-            useSymlinks = true;
+        } else if (arg.rfind("--", 0) == std::string::npos && indexFile == "sfs_index.json") {
+            indexFile = arg; // Use first non-flag as indexFile
+        } else {
+            std::cerr << "Unrecognized argument: " << arg << "\n";
         }
     }
 
-    // if symlinks flag is set, create and use symlinks for directories
+    g_srcBase = realSrc;
+    g_destBase = realDest;
+
     if (useSymlinks) {
         createAndUseSymlinks(realSrc, realDest);
     }
 
-    // Now assign our working directories from the resolved paths (or symlink ones)
     fs::path dirA = realSrc;
     fs::path dirB = realDest;
 
@@ -429,21 +448,15 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // load ignore patterns
     loadIgnorePatterns("ignore_patterns.txt");
-
-    // load index
     auto indexMap = loadIndex(indexFile);
 
-    // scan each directory
     auto scanA = scanDirectory(dirA);
     auto scanB = scanDirectory(dirB);
 
-    // detect renames in src and dest
     detectRenamesInOneSide(scanA, indexMap, true);
     detectRenamesInOneSide(scanB, indexMap, false);
 
-    // gather all relevant paths
     std::unordered_set<fs::path> allPaths;
     for (auto& kv : indexMap) allPaths.insert(kv.first);
     for (auto& kv : scanA)     allPaths.insert(kv.first);
