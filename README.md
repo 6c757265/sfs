@@ -14,7 +14,7 @@ g++ main.cpp -std=c++17 -lcrypto -o sfs.exe
 Run the sync tool:
 
 ```bash
-./sfs.exe <source_directory> <destination_directory> <index_file.json> [--dry-run] [--symlinks]
+./sfs.exe <source_directory> <destination_directory> [index_file] [--dry-run] [--symlinks]
 ```
 
 - `--dry-run`: Preview changes without modifying files.
